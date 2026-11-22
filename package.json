@@ -2,7 +2,7 @@
   "name": "teamboard",
   "displayName": "TeamBoard - Kanban and Scrum Board for Teams",
   "description": "A free Kanban and Scrum board inside VS Code. Plan sprints, assign tasks, connect commits to tasks, post progress updates for non-code work, and see team contributions.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "quickdm",
   "license": "MIT",
   "homepage": "https://quickdm.app",
@@ -28,15 +28,6 @@
     "Other",
     "SCM Providers",
     "Visualization"
-  ],
-  "keywords": [
-    "kanban",
-    "scrum",
-    "tasks",
-    "sprint",
-    "project management",
-    "team",
-    "board"
   ],
   "activationEvents": [
     "onStartupFinished"

@@ -109,7 +109,7 @@
           <div class="help-step"><span class="num">3</span><div><b>Show progress</b><p><b>Developers:</b> just commit, and you'll be asked which task it was for. <b>Everyone else:</b> open the task and post an update.</p></div></div>
           <div class="help-step"><span class="num">4</span><div><b>Finish</b><p>Move the task to <b>Done</b> by dragging it or using the status bar on the task. Picked the wrong task for a commit? Click <span class="kbd">Change</span> on it.</p></div></div>
         </div>
-        ${!S.st.initialized ? `<div class="help-note">${icon('bolt', 'sm')} Your board is saved in <span class="mono">.teamboard/</span> in this repo. Commit &amp; push it so your whole team shares it, free.</div>` : ''}
+        ${!S.st.initialized ? `<div class="help-note">${icon('bolt', 'sm')} TeamBoard is <b>off</b> for this project until you create the first task, so you won't get commit popups here. The board is then saved in <span class="mono">.teamboard/</span> in this repo. Commit &amp; push it so your whole team shares it, free.</div>` : ''}
       </div>`;
   }
 

@@ -172,8 +172,13 @@ export class Controller implements vscode.Disposable {
     }
   }
 
+  /** TeamBoard only acts in projects that have a board (.teamboard/ exists). */
+  private get boardActive(): boolean {
+    return !!this.store?.isInitialized();
+  }
+
   private renderStatus(st = this.getState()): void {
-    if (!st.ready) {
+    if (!st.ready || !st.initialized) {
       this.status.hide();
       return;
     }
@@ -300,7 +305,7 @@ export class Controller implements vscode.Disposable {
 
   /** Pre-fill the SCM commit box with the current task tag. */
   private applyCommitTag(): void {
-    if (!this.cfg('autoTagCommitMessage', true) || !this.gitApi) {
+    if (!this.cfg('autoTagCommitMessage', true) || !this.gitApi || !this.boardActive) {
       return;
     }
     const id = this.currentTaskId;
@@ -486,7 +491,7 @@ export class Controller implements vscode.Disposable {
   }
 
   private async handleNewCommit(hash: string, subject: string): Promise<void> {
-    if (this.linkedHashes().has(hash)) {
+    if (!this.boardActive || this.linkedHashes().has(hash)) {
       return;
     }
     const tag = TAG_RE.exec(subject)?.[1]?.toUpperCase();
@@ -502,7 +507,7 @@ export class Controller implements vscode.Disposable {
   }
 
   private async onPushed(count: number): Promise<void> {
-    if (!this.cfg('promptOnPush', true) || !this.git || this.prompting) {
+    if (!this.cfg('promptOnPush', true) || !this.git || this.prompting || !this.boardActive) {
       return;
     }
     const linked = this.linkedHashes();

@@ -17,6 +17,16 @@
       app.innerHTML = `<div class="now-empty"><b>No folder open</b>Open a git repository to use TeamBoard.</div>`;
       return;
     }
+    if (!st.initialized) {
+      app.innerHTML = `
+        <div class="now-empty">
+          <b>TeamBoard is off for this project</b>
+          Your commits here won't trigger any popups. To use a board in this project, create the first task.
+          <div style="margin-top:10px"><button class="btn sm primary" data-action="cmd" data-command="teamboard.newTask">${icon('plus', 'sm')} Create first task</button></div>
+          <div style="margin-top:6px"><button class="btn sm ghost" data-action="board">${icon('board', 'sm')} Open board</button></div>
+        </div>`;
+      return;
+    }
     const meEmail = st.me.email;
     const current = st.tasks.find((t) => t.id === st.currentTaskId);
     const mine = st.tasks.filter((t) => t.assignee === meEmail && t.status !== 'done' && t.id !== st.currentTaskId);
