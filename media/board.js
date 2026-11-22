@@ -64,7 +64,7 @@
     if (!S.st) return;
     const st = S.st;
     if (!st.ready) {
-      app.innerHTML = `<div class="empty"><div class="big">📁</div><h3>Open a folder to start</h3><p>TeamBoard stores your board inside the project, so open a git repository folder.</p></div>`;
+      app.innerHTML = `<div class="empty"><div class="big">\u{1F4C1}</div><h3>Open a folder to start</h3><p>TeamBoard stores your board inside the project, so open a git repository folder.</p></div>`;
       return;
     }
     const scrollY = window.scrollY;
@@ -74,7 +74,7 @@
           <div class="logo">${icon('board')}</div>
           <div style="min-width:0">
             <div class="project" data-action="rename" title="Click to rename">${esc(st.config.project)}</div>
-            <div class="sub">${st.tasks.filter((t) => t.status !== 'done').length} open tasks · ${TB.people(st).length} people</div>
+            <div class="sub">${st.tasks.filter((t) => t.status !== 'done').length} open tasks \u00B7 ${TB.people(st).length} people</div>
           </div>
         </div>
         <nav class="tabs">
@@ -84,7 +84,7 @@
         </nav>
         <div class="actions">
           <button class="btn ghost icon" data-action="toggleHelp" title="How TeamBoard works">?</button>
-          <button class="btn" data-action="logWork" title="Post progress on non-code work — no commit needed">${icon('note')} Add update</button>
+          <button class="btn" data-action="logWork" title="Post progress on non-code work \u2014 no commit needed">${icon('note')} Add update</button>
           <button class="btn primary" data-action="newTask">${icon('plus')} New task</button>
         </div>
       </header>
@@ -92,7 +92,7 @@
         ${S.help ? helpCard() : ''}
         ${S.tab === 'board' ? boardView() : S.tab === 'team' ? teamView() : activityView()}
       </div>
-      <footer class="foot">TeamBoard is free · Made with <span class="heart">♥</span> by Aryan · <button class="foot-link" data-action="sponsor" title="Visit quickdm.app">quickdm.app</button></footer>`;
+      <footer class="foot">TeamBoard is free \u00B7 Made with <span class="heart">\u2665</span> by Aryan \u00B7 <button class="foot-link" data-action="sponsor" title="Visit quickdm.app">quickdm.app</button></footer>`;
     if (S.tab === 'board') renderColumns();
     window.scrollTo(0, scrollY);
   }
@@ -130,7 +130,7 @@
           <span class="name">${icon('flag', 'sm')} ${esc(sp.name)}</span>
           ${sp.goal ? `<span class="goal" title="Sprint goal">${esc(sp.goal)}</span>` : ''}
           <div class="meter"><div class="bar"><span style="width:${pct}%;background:var(--green)"></span></div></div>
-          <span class="muted">${pct}% · ${done}/${total} pts</span>
+          <span class="muted">${pct}% \u00B7 ${done}/${total} pts</span>
           <span class="pill" style="${left < 0 ? 'color:var(--red)' : left <= 2 ? 'color:var(--amber)' : ''}">${left < 0 ? `${-left} days over` : `${left} days left`}</span>
           <button class="btn ghost sm" data-action="sprints">Manage</button>
         </div>`;
@@ -138,7 +138,7 @@
     return `
       ${sprintHtml}
       <div class="toolbar">
-        <div class="search">${icon('search', 'sm')}<input class="input" id="q" placeholder="Search tasks…  ( / )" value="${esc(S.q)}"></div>
+        <div class="search">${icon('search', 'sm')}<input class="input" id="q" placeholder="Search tasks\u2026  ( / )" value="${esc(S.q)}"></div>
         <div class="seg">
           <button class="${S.show === 'all' ? 'on' : ''}" data-action="show" data-show="all">All tasks</button>
           <button class="${S.show === 'mine' ? 'on' : ''}" data-action="show" data-show="mine">My tasks</button>
@@ -155,7 +155,7 @@
           <option value="none" ${S.sprint === 'none' ? 'selected' : ''}>No sprint</option>
           ${st.config.sprints.map((s) => `<option value="${esc(s.id)}" ${S.sprint === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}
         </select>` : ''}
-        ${!sp ? `<button class="btn ghost" data-action="sprints" title="Optional: group tasks into 1–2 week sprints">${icon('flag', 'sm')} Sprints</button>` : ''}
+        ${!sp ? `<button class="btn ghost" data-action="sprints" title="Optional: group tasks into 1\u20132 week sprints">${icon('flag', 'sm')} Sprints</button>` : ''}
       </div>
       <div class="columns" id="columns"></div>`;
   }
@@ -193,7 +193,7 @@
     const canTake = !t.assignee && t.status !== 'done';
     const prio = TB.PRIORITIES.find((p) => p.id === t.priority)?.label;
     return `
-      <article class="card prio-${t.priority} ${isCurrent ? 'current' : ''} ${t.status === 'done' ? 'is-done' : ''}" draggable="true" data-id="${t.id}" data-action="openTask" title="Click to open · drag to move">
+      <article class="card prio-${t.priority} ${isCurrent ? 'current' : ''} ${t.status === 'done' ? 'is-done' : ''}" draggable="true" data-id="${t.id}" data-action="openTask" title="Click to open \u00B7 drag to move">
         ${isCurrent ? `<div class="now">${icon('target', 'sm')} You're on this</div>` : ''}
         <div class="card-title">${esc(t.title)}</div>
         ${t.labels?.length ? `<div class="card-labels">${t.labels.map((l) => `<span class="label" style="--c:${TB.color(l)}">${esc(l)}</span>`).join('')}</div>` : ''}
@@ -253,7 +253,7 @@
       <div class="kpis">
         ${kpi('users', 'var(--violet)', 'People', `${rows.length}<small>${active} active</small>`)}
         ${kpi('commit', 'var(--blue)', 'Commits', TB.fmt(tot.commits))}
-        ${kpi('lines', 'var(--green)', 'Lines changed', `<span class="plus">+${TB.fmt(tot.add)}</span> <span class="minus" style="font-size:18px">−${TB.fmt(tot.del)}</span>`)}
+        ${kpi('lines', 'var(--green)', 'Lines changed', `<span class="plus">+${TB.fmt(tot.add)}</span> <span class="minus" style="font-size:18px">\u2212${TB.fmt(tot.del)}</span>`)}
         ${kpi('check', 'var(--amber)', 'Tasks done', TB.fmt(tot.tasks))}
         ${kpi('clock', 'var(--red)', 'Non-code hours', TB.fmt(tot.hours))}
       </div>
@@ -262,7 +262,7 @@
         <div class="section-title">${icon('activity', 'sm')} Share of impact</div>
         <div class="share">${ranked.filter((r) => r.score).map((r) => `<span style="width:${(r.score / totalScore) * 100}%;background:${TB.color(r.email)}" title="${esc(r.name)}: ${Math.round((r.score / totalScore) * 100)}%"></span>`).join('')}</div>
         <div class="legend">${ranked.filter((r) => r.score).slice(0, 10).map((r) => `<span><i style="background:${TB.color(r.email)}"></i>${esc(r.name)} ${Math.round((r.score / totalScore) * 100)}%</span>`).join('')}</div>` : ''}
-      <div class="section-title">${icon('trophy', 'sm')} Leaderboard <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· click a column to sort</span></div>
+      <div class="section-title">${icon('trophy', 'sm')} Leaderboard <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">\u00B7 click a column to sort</span></div>
       <div class="table-wrap">
         <table class="lb">
           <thead><tr>
@@ -279,9 +279,9 @@
                 <td><div class="who">${avatar(r, 'md')}<div><div class="n">${esc(r.name)}${r.email === me() ? '<span class="tag">you</span>' : ''}${r.role ? `<span class="tag">${esc(r.role)}</span>` : ''}</div><div class="e">${esc(r.email)}</div></div></div></td>
                 <td class="num"><b>${TB.fmt(r.commits)}</b></td>
                 <td class="num plus">+${TB.fmt(r.add)}</td>
-                <td class="num minus">−${TB.fmt(r.del)}</td>
+                <td class="num minus">\u2212${TB.fmt(r.del)}</td>
                 <td class="num">${r.tasksDone}</td>
-                <td class="num">${r.hours ? r.hours : '—'}</td>
+                <td class="num">${r.hours ? r.hours : '\u2014'}</td>
                 <td>${TB.sparkline(r.weeks, 84, 22, TB.color(r.email))}</td>
                 <td class="num"><div class="scorebar"><div class="bar"><span style="width:${(r.score / maxScore) * 100}%;background:${TB.color(r.email)}"></span></div><b>${TB.fmt(r.score)}</b></div></td>
                 <td><button class="x-btn" data-action="editMember" data-email="${esc(r.email)}" title="Edit name / role">${icon('edit', 'sm')}</button>${r.manual ? `<button class="x-btn" data-action="removeMember" data-email="${esc(r.email)}" title="Remove member">${icon('x', 'sm')}</button>` : ''}</td>
@@ -290,7 +290,7 @@
           </tbody>
         </table>
       </div>
-      ${!rows.length ? `<div class="empty"><div class="big">👥</div><h3>No one here yet</h3><p>Make a commit or add a member to get started.</p></div>` : ''}`;
+      ${!rows.length ? `<div class="empty"><div class="big">\u{1F465}</div><h3>No one here yet</h3><p>Make a commit or add a member to get started.</p></div>` : ''}`;
   }
 
   const kpi = (ic, c, k, v) => `<div class="kpi" style="--c:${c}"><div class="k">${icon(ic, 'sm')} ${k}</div><div class="v">${v}</div></div>`;
@@ -347,7 +347,7 @@
         <div class="seg">${seg('all', 'Everything')}${seg('commit', 'Commits')}${seg('external', 'Updates')}${seg('event', 'Task changes')}</div>
         ${unlinkedMine ? `<span class="unlinked">${unlinkedMine} of your commits have no task</span>` : ''}
       </div>
-      <div class="timeline">${body || `<div class="empty"><div class="big">🗓️</div><h3>Nothing here yet</h3><p>Commits, updates and task changes will show up here.</p></div>`}</div>`;
+      <div class="timeline">${body || `<div class="empty"><div class="big">\u{1F5D3}</div><h3>Nothing here yet</h3><p>Commits, updates and task changes will show up here.</p></div>`}</div>`;
   }
 
   function feedItem(it, inTask) {
@@ -373,7 +373,7 @@
           <div class="tl-line">${avatar(p)}<span class="n">${name}</span><span class="muted">committed</span>${linkPart}</div>
           <div class="tl-msg">${esc(c.subject)}</div>
           ${note ? `<div class="tl-meta">${icon('note', 'sm')} ${esc(note.message)}</div>` : ''}
-          <div class="tl-meta"><span class="mono">${c.hash.slice(0, 7)}</span>${c.files ? `<span>${c.files} files</span><span class="plus">+${TB.fmt(c.add)}</span><span class="minus">−${TB.fmt(c.del)}</span>` : ''}</div>
+          <div class="tl-meta"><span class="mono">${c.hash.slice(0, 7)}</span>${c.files ? `<span>${c.files} files</span><span class="plus">+${TB.fmt(c.add)}</span><span class="minus">\u2212${TB.fmt(c.del)}</span>` : ''}</div>
         </div>
         <div class="tl-time">${time}</div>
       </div>`;
@@ -409,7 +409,7 @@
   };
   const val = (id) => modalRoot.querySelector('#' + id)?.value ?? '';
   const opts = (list, sel) => list.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(sel ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
-  const peopleOpts = (sel) => opts([['', 'Unassigned — anyone can take it'], ...TB.people(S.st).map((p) => [p.email, p.email === me() ? `${p.name} (you)` : p.name])], sel);
+  const peopleOpts = (sel) => opts([['', 'Unassigned \u2014 anyone can take it'], ...TB.people(S.st).map((p) => [p.email, p.email === me() ? `${p.name} (you)` : p.name])], sel);
   const sprintOpts = (sel) => opts([['', 'No sprint'], ...S.st.config.sprints.map((s) => [s.id, s.name])], sel);
 
   // ---- new task
@@ -420,7 +420,7 @@
       <div class="modal-head"><h2>${icon('plus')} New task</h2><button class="btn ghost icon x" data-action="closeModal">${icon('x')}</button></div>
       <div class="modal-body">
         <div class="field"><input class="input title" id="f-title" placeholder="What needs to be done?" autofocus></div>
-        <div class="field"><label>Details <span class="opt">optional</span></label><textarea class="input" id="f-desc" rows="3" placeholder="Context, links, what 'done' looks like…"></textarea></div>
+        <div class="field"><label>Details <span class="opt">optional</span></label><textarea class="input" id="f-desc" rows="3" placeholder="Context, links, what 'done' looks like\u2026"></textarea></div>
         <div class="grid2">
           <div class="field"><label>Who does it?</label><select class="input" id="f-who">${peopleOpts('')}</select></div>
           <div class="field"><label>Column</label><select class="input" id="f-status">${opts(TB.STATUSES.map((s) => [s.id, s.label]), status || 'todo')}</select></div>
@@ -482,10 +482,10 @@
         <div id="m-action"></div>
         <div class="split">
           <div>
-            <div class="field"><label>Details</label><textarea class="input" id="f-desc" data-field="description" rows="3" placeholder="Add context, links, what 'done' looks like…">${esc(t.description)}</textarea></div>
+            <div class="field"><label>Details</label><textarea class="input" id="f-desc" data-field="description" rows="3" placeholder="Add context, links, what 'done' looks like\u2026">${esc(t.description)}</textarea></div>
             <div class="section-title" style="margin-top:6px">${icon('note', 'sm')} Updates</div>
             <div class="composer">
-              <textarea class="input" id="u-msg" rows="2" placeholder="What did you do? e.g. “Sent the newsletter to 2,000 users” (no commit needed)"></textarea>
+              <textarea class="input" id="u-msg" rows="2" placeholder="What did you do? e.g. \u201CSent the newsletter to 2,000 users\u201D (no commit needed)"></textarea>
               <div class="row">
                 <select class="input compact" id="u-cat" title="Type of work">${opts(st.config.categories.map((c) => [c, c]), st.config.categories[0])}</select>
                 <input class="input compact" id="u-hours" type="number" min="0" step="0.25" placeholder="Hours" title="Hours spent (optional)" style="width:84px">
@@ -556,7 +556,7 @@
     set('m-meta', `
       <div class="kv"><span>Created by</span><span>${esc(w(t.createdBy)?.name || t.createdBy)}</span></div>
       <div class="kv"><span>Created</span><span>${TB.timeAgo(t.createdAt)}</span></div>
-      <div class="kv"><span>Commits</span><span>${commits.length}${commits.length ? ` · <span class="plus">+${TB.fmt(add)}</span> <span class="minus">−${TB.fmt(del)}</span>` : ''}</span></div>
+      <div class="kv"><span>Commits</span><span>${commits.length}${commits.length ? ` \u00B7 <span class="plus">+${TB.fmt(add)}</span> <span class="minus">\u2212${TB.fmt(del)}</span>` : ''}</span></div>
       ${hours ? `<div class="kv"><span>Hours logged</span><span>${hours}h</span></div>` : ''}`);
   }
 
@@ -583,7 +583,7 @@
     post('moveTask', { id: t.id, status });
     refreshTaskPage();
     renderColumns();
-    TB.toast(status === 'done' ? `🎉 ${t.id} done!` : `Moved to ${TB.statusOf(status).label}`);
+    TB.toast(status === 'done' ? `\u{1F389} ${t.id} done!` : `Moved to ${TB.statusOf(status).label}`);
   }
 
   function postUpdate() {
@@ -596,7 +596,7 @@
     post('logWork', { entry: { message, category: val('u-cat'), hours: Number(val('u-hours')) || 0, taskId: S.openTaskId } });
     modalRoot.querySelector('#u-msg').value = '';
     modalRoot.querySelector('#u-hours').value = '';
-    TB.toast('Update posted ✓');
+    TB.toast('Update posted \u2713');
   }
 
   // ---- quick update (not opened from a task)
@@ -607,7 +607,7 @@
       <div class="modal-head"><h2>${icon('note')} Add an update</h2><button class="btn ghost icon x" data-action="closeModal">${icon('x')}</button></div>
       <div class="modal-body">
         <p class="muted" style="margin-top:0">For work that isn't code, like marketing, design, calls or research, so it still counts. No commit needed.</p>
-        <div class="field"><label>Which task is it for?</label><select class="input" id="w-task">${opts([['', 'No specific task'], ...open.map((t) => [t.id, `${t.id} · ${t.title}`])], st.currentTaskId || '')}</select></div>
+        <div class="field"><label>Which task is it for?</label><select class="input" id="w-task">${opts([['', 'No specific task'], ...open.map((t) => [t.id, `${t.id} \u00B7 ${t.title}`])], st.currentTaskId || '')}</select></div>
         <div class="field"><label>What did you do?</label><textarea class="input" id="w-msg" rows="3" placeholder="e.g. Wrote the launch announcement and scheduled social posts" autofocus></textarea></div>
         <div class="grid3">
           <div class="field"><label>Type</label><select class="input" id="w-cat">${opts(st.config.categories.map((c) => [c, c]), st.config.categories[0])}</select></div>
@@ -627,12 +627,12 @@
     modal(`
       <div class="modal-head"><h2>${icon('flag')} Sprints</h2><button class="btn ghost icon x" data-action="closeModal">${icon('x')}</button></div>
       <div class="modal-body">
-        <p class="muted" style="margin-top:0">Optional. A sprint is a short time-box (usually 1–2 weeks) with a goal. Add tasks to it and the board shows progress and days left.</p>
+        <p class="muted" style="margin-top:0">Optional. A sprint is a short time-box (usually 1\u20132 weeks) with a goal. Add tasks to it and the board shows progress and days left.</p>
         ${st.config.sprints.map((s) => {
           const n = st.tasks.filter((t) => t.sprintId === s.id).length;
           const on = s.id === st.config.activeSprintId;
           return `<div class="sprint-row ${on ? 'on' : ''}">
-            <div class="grow"><b>${esc(s.name)}</b> <span class="muted">· ${esc(s.start)} → ${esc(s.end)} · ${n} tasks</span>${s.goal ? `<div class="muted" style="font-size:12px">${esc(s.goal)}</div>` : ''}</div>
+            <div class="grow"><b>${esc(s.name)}</b> <span class="muted">\u00B7 ${esc(s.start)} \u2192 ${esc(s.end)} \u00B7 ${n} tasks</span>${s.goal ? `<div class="muted" style="font-size:12px">${esc(s.goal)}</div>` : ''}</div>
             ${on ? `<span class="pill" style="color:var(--accent);background:var(--accent-soft)">Current</span>` : `<button class="btn sm" data-action="activateSprint" data-id="${s.id}">Make current</button>`}
             <button class="btn ghost icon sm" data-action="deleteSprint" data-id="${s.id}" title="Delete sprint (tasks are kept)">${icon('trash', 'sm')}</button>
           </div>`;
@@ -657,7 +657,7 @@
         <p class="muted" style="margin-top:0">Add people who don't write code (marketing, design, PM). They can then be assigned tasks, post updates and appear on the leaderboard. If they also commit, use the same email as their git config.</p>
         <div class="field"><label>Name</label><input class="input" id="m-name" value="${esc(m?.name || p?.name || '')}" placeholder="Jane Doe"></div>
         <div class="field"><label>Email</label><input class="input" id="m-email" value="${esc(email || '')}" ${email ? 'readonly' : ''} placeholder="jane@company.com"></div>
-        <div class="field"><label>Role <span class="opt">optional</span></label><input class="input" id="m-role" value="${esc(m?.role || p?.role || '')}" placeholder="Marketing, Design, Backend…"></div>
+        <div class="field"><label>Role <span class="opt">optional</span></label><input class="input" id="m-role" value="${esc(m?.role || p?.role || '')}" placeholder="Marketing, Design, Backend\u2026"></div>
       </div>
       <div class="modal-foot"><span class="grow"></span><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveMember">${icon('check')} Save</button></div>`, 'narrow');
   }
@@ -694,7 +694,7 @@
       const taskId = val('w-task') || undefined;
       post('logWork', { entry: { message, category: val('w-cat'), hours: Number(val('w-hours')) || 0, date: val('w-date') ? val('w-date') + 'T12:00:00' : undefined, taskId } });
       if (taskId && modalRoot.querySelector('#w-done')?.checked) post('moveTask', { id: taskId, status: 'done' });
-      closeModal(); TB.toast('Update posted ✓');
+      closeModal(); TB.toast('Update posted \u2713');
     },
     createSprint: () => {
       post('saveSprint', { sprint: { name: val('s-name'), start: val('s-start'), end: val('s-end'), goal: val('s-goal'), makeActive: true } });
@@ -775,7 +775,7 @@
       t.status = status; // optimistic
       post('moveTask', { id: t.id, status });
       renderColumns();
-      TB.toast(status === 'done' ? `🎉 ${t.id} done!` : `Moved to ${TB.statusOf(status).label}`);
+      TB.toast(status === 'done' ? `\u{1F389} ${t.id} done!` : `Moved to ${TB.statusOf(status).label}`);
     }
     S.dragId = null;
   });

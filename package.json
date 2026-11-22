@@ -9,6 +9,13 @@
   "sponsor": {
     "url": "https://quickdm.app"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Aryan8451/teamboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Aryan8451/teamboard/issues"
+  },
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1e1b3a",
@@ -174,7 +181,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./ --noEmit && esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
     "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --watch",
-    "package": "npx --yes @vscode/vsce package --allow-missing-repository"
+    "package": "npx --yes @vscode/vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

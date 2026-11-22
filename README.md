@@ -5,7 +5,7 @@ A free Kanban/Scrum board that lives inside your repo. There's no server, no acc
 ## Features
 
 **Kanban board**
-- Five columns: Backlog → To Do → In Progress → Review → Done. Drag and drop cards between them.
+- Five columns: Backlog -> To Do -> In Progress -> Review -> Done. Drag and drop cards between them.
 - Each task has a priority, story points, labels, an assignee and a sprint.
 - Use the **Up for grabs** filter to see unassigned tasks. Contributors choose their own work with **Pick up**, which assigns the task to them, moves it to *In Progress* and makes it their current task.
 - Filter by person, by "mine" or by sprint, or search. Press `n` to create a task and `/` to search.
@@ -29,7 +29,7 @@ A free Kanban/Scrum board that lives inside your repo. There's no server, no acc
 - Shows commits, lines added and removed, files touched, tasks shipped, story points and external hours.
 - Includes a 12-week trend sparkline, a podium for the top 3, and each person's share of impact.
 - Filter by 7, 30 or 90 days, or all time. Click any column to sort.
-- **Impact score** = commits×3 + tasks done×10 + points×5 + external hours×4 + lines changed÷50.
+- **Impact score** = commits x 3 + tasks done x 10 + story points x 5 + update hours x 4 + lines changed / 50.
 - Lockfiles and build output are left out of line counts. You can change this with `teamboard.excludeFromLineStats`.
 
 **Activity timeline**
@@ -64,7 +64,7 @@ To develop, open this folder in VS Code and press **F5**.
 | `teamboard.promptOnPush` | `true` | After a push, offer to link unlinked commits |
 | `teamboard.autoTagCommitMessage` | `true` | Pre-fill `[T-XXXX]` in the commit box |
 | `teamboard.maxCommits` | `5000` | How many commits of history to read for stats |
-| `teamboard.excludeFromLineStats` | lockfiles, dist… | Glob patterns left out of line counts |
+| `teamboard.excludeFromLineStats` | lockfiles, dist... | Glob patterns left out of line counts |
 
 ## About the maker
 
@@ -74,4 +74,4 @@ Made by **Aryan Goud**, an indie maker. TeamBoard is free. If it helps your team
 
 ## Commands
 
-`TeamBoard: Open Board` · `Open Contributors & Leaderboard` · `New Task` · `Log External Work` · `Set Current Task` (or click the status bar) · `Link Last Commit to a Task` · `Refresh`
+`TeamBoard: Open Board` | `Open Contributors & Leaderboard` | `New Task` | `Log External Work` | `Set Current Task` (or click the status bar) | `Link Last Commit to a Task` | `Refresh`

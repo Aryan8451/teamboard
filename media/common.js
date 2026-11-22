@@ -10,7 +10,7 @@ const TB = (() => {
 
   const STATUSES = [
     { id: 'backlog', label: 'Backlog', color: '#8b90a5', hint: 'Ideas & later' },
-    { id: 'todo', label: 'To Do', color: '#4f8ef7', hint: 'Ready — anyone can take these' },
+    { id: 'todo', label: 'To Do', color: '#4f8ef7', hint: 'Ready \u2014 anyone can take these' },
     { id: 'inprogress', label: 'In Progress', color: '#f5a524', hint: 'Someone is working on it' },
     { id: 'review', label: 'Review', color: '#a46bf5', hint: 'Waiting for a check' },
     { id: 'done', label: 'Done', color: '#2fbf71', hint: 'Finished' },
@@ -44,7 +44,7 @@ const TB = (() => {
 
   const avatar = (p, cls = '') =>
     p
-      ? `<span class="av ${cls}" style="--c:${color(p.email)}" title="${esc(p.name)} · ${esc(p.email)}">${esc(initials(p.name))}</span>`
+      ? `<span class="av ${cls}" style="--c:${color(p.email)}" title="${esc(p.name)} \u00B7 ${esc(p.email)}">${esc(initials(p.name))}</span>`
       : `<span class="av empty ${cls}" title="Unassigned">?</span>`;
 
   const ICONS = {
@@ -148,7 +148,7 @@ const TB = (() => {
     }
     return [...rows.values()];
   }
-  const SCORE_HELP = `Impact score = commits×${SCORE.commit} + tasks done×${SCORE.task} + story points×${SCORE.point} + external hours×${SCORE.hour} + lines changed÷${SCORE.lines}`;
+  const SCORE_HELP = `Impact score = commits\u00D7${SCORE.commit} + tasks done\u00D7${SCORE.task} + story points\u00D7${SCORE.point} + external hours\u00D7${SCORE.hour} + lines changed\u00F7${SCORE.lines}`;
 
   /** hash -> latest link entry. The newest choice wins, so a wrong link can be fixed by re-linking. */
   function commitLinks(st) {

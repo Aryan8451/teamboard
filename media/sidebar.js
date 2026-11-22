@@ -59,7 +59,7 @@
       <div class="sb-actions">
         <button class="btn sm" data-action="board">${icon('board', 'sm')} Open board</button>
         <button class="btn sm" data-action="cmd" data-command="teamboard.newTask">${icon('plus', 'sm')} New task</button>
-        <button class="btn sm" data-action="cmd" data-command="teamboard.logWork" title="Non-code work: marketing, design, calls…">${icon('note', 'sm')} Add update</button>
+        <button class="btn sm" data-action="cmd" data-command="teamboard.logWork" title="Non-code work: marketing, design, calls\u2026">${icon('note', 'sm')} Add update</button>
         <button class="btn sm" data-action="cmd" data-command="teamboard.linkLastCommit" title="Linked your last commit to the wrong task? Change it">${icon('link', 'sm')} Fix last commit</button>
       </div>
 
@@ -67,20 +67,20 @@
       ${mine.length ? mine.map((t) => mini(t, 'current')).join('') : `<div class="muted" style="font-size:12px;padding:2px 4px">Nothing assigned to you.</div>`}
 
       <div class="sb-title">Unassigned, anyone can take <span class="n">${grabs.length}</span></div>
-      ${grabs.length ? grabs.slice(0, 8).map((t) => mini(t, 'pick')).join('') : `<div class="muted" style="font-size:12px;padding:2px 4px">No unassigned tasks 🎉</div>`}
+      ${grabs.length ? grabs.slice(0, 8).map((t) => mini(t, 'pick')).join('') : `<div class="muted" style="font-size:12px;padding:2px 4px">No unassigned tasks \u{1F389}</div>`}
 
-      <div class="sb-title">${icon('trophy', 'sm')} Top contributors · 30d</div>
+      <div class="sb-title">${icon('trophy', 'sm')} Top contributors \u00B7 30d</div>
       ${ranked.filter((r) => r.score).slice(0, 5).map((r, i) => `
         <div class="lb-mini ${r.email === meEmail ? 'me' : ''}">
           <span class="r r${i + 1}">${i + 1}</span>${avatar(r)}<span class="n">${esc(r.name)}</span><b>${TB.fmt(r.score)}</b>
         </div>`).join('') || `<div class="muted" style="font-size:12px;padding:2px 4px">No activity yet.</div>`}
       <div style="margin-top:8px"><button class="btn sm ghost block" data-action="team">View full leaderboard ${icon('arrow', 'sm')}</button></div>
-      <footer class="foot">Made with <span class="heart">♥</span> by Aryan · <button class="foot-link" data-action="sponsor" title="Visit quickdm.app">quickdm.app</button></footer>`;
+      <footer class="foot">Made with <span class="heart">\u2665</span> by Aryan \u00B7 <button class="foot-link" data-action="sponsor" title="Visit quickdm.app">quickdm.app</button></footer>`;
   }
 
   function mini(t, mode) {
     const s = TB.statusOf(t.status);
-    return `<div class="mini" data-action="${mode === 'pick' ? 'open' : 'current'}" data-id="${t.id}" title="${esc(t.title)} — ${s.label}${mode === 'pick' ? '' : ' · click to make it your current task'}">
+    return `<div class="mini" data-action="${mode === 'pick' ? 'open' : 'current'}" data-id="${t.id}" title="${esc(t.title)} \u2014 ${s.label}${mode === 'pick' ? '' : ' \u00B7 click to make it your current task'}">
       <span class="sd" style="--c:${s.color}"></span>
       <span class="t">${esc(t.title)}</span>
       ${mode === 'pick' ? `<button class="pickup" data-action="pick" data-id="${t.id}" title="Assign to me and start">Take it</button>` : `<span class="tid">${t.id}</span>`}
