@@ -1,0 +1,189 @@
+{
+  "name": "teamboard",
+  "displayName": "TeamBoard - Kanban and Scrum Board for Teams",
+  "description": "A free Kanban and Scrum board inside VS Code. Plan sprints, assign tasks, connect commits to tasks, post progress updates for non-code work, and see team contributions.",
+  "version": "0.2.0",
+  "publisher": "quickdm",
+  "license": "MIT",
+  "homepage": "https://quickdm.app",
+  "sponsor": {
+    "url": "https://quickdm.app"
+  },
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1b3a",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers",
+    "Visualization"
+  ],
+  "keywords": [
+    "kanban",
+    "scrum",
+    "tasks",
+    "sprint",
+    "project management",
+    "team",
+    "board"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "teamboard",
+          "title": "TeamBoard",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "teamboard": [
+        {
+          "type": "webview",
+          "id": "teamboard.sidebar",
+          "name": "My Work"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "teamboard.openBoard",
+        "title": "Open Board",
+        "category": "TeamBoard",
+        "icon": "$(project)"
+      },
+      {
+        "command": "teamboard.openTeam",
+        "title": "Open Contributors & Leaderboard",
+        "category": "TeamBoard",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "teamboard.newTask",
+        "title": "New Task",
+        "category": "TeamBoard",
+        "icon": "$(add)"
+      },
+      {
+        "command": "teamboard.logWork",
+        "title": "Add Update (non-code work: marketing, design, meetings...)",
+        "category": "TeamBoard",
+        "icon": "$(note)"
+      },
+      {
+        "command": "teamboard.setCurrentTask",
+        "title": "Set Current Task",
+        "category": "TeamBoard"
+      },
+      {
+        "command": "teamboard.linkLastCommit",
+        "title": "Link / Change Task of Last Commit",
+        "category": "TeamBoard"
+      },
+      {
+        "command": "teamboard.refresh",
+        "title": "Refresh",
+        "category": "TeamBoard",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "teamboard.openBoard",
+          "when": "view == teamboard.sidebar",
+          "group": "navigation@1"
+        },
+        {
+          "command": "teamboard.newTask",
+          "when": "view == teamboard.sidebar",
+          "group": "navigation@2"
+        },
+        {
+          "command": "teamboard.refresh",
+          "when": "view == teamboard.sidebar",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TeamBoard",
+      "properties": {
+        "teamboard.commitPrompt": {
+          "type": "string",
+          "enum": [
+            "always",
+            "never"
+          ],
+          "enumDescriptions": [
+            "Ask which task each of your new commits belongs to (unless the message already contains a task tag like [T-AB12]).",
+            "Never prompt. Commits can still be linked with a tag in the message or via 'Link Last Commit'."
+          ],
+          "default": "always",
+          "description": "When to show the 'What was this commit for?' window."
+        },
+        "teamboard.promptOnPush": {
+          "type": "boolean",
+          "default": true,
+          "description": "After a push, offer to link any of your pushed commits that are not linked to a task yet."
+        },
+        "teamboard.autoTagCommitMessage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Pre-fill the Source Control commit box with your current task tag, e.g. [T-AB12]."
+        },
+        "teamboard.maxCommits": {
+          "type": "number",
+          "default": 5000,
+          "description": "Maximum number of commits read from git history for contributor statistics."
+        },
+        "teamboard.excludeFromLineStats": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "package-lock.json",
+            "yarn.lock",
+            "pnpm-lock.yaml",
+            "*.min.js",
+            "*.min.css",
+            "*.map",
+            "dist/**",
+            "out/**",
+            "build/**"
+          ],
+          "description": "Glob patterns of files ignored when counting lines added/removed (lockfiles, build output...)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./ --noEmit && esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
+    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --watch",
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.4.0"
+  },
+  "author": {
+    "name": "Aryan Goud",
+    "url": "https://quickdm.app"
+  }
+}
