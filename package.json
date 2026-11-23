@@ -1,14 +1,10 @@
 {
   "name": "teamboard",
-  "displayName": "TeamBoard - Kanban and Scrum Board for Teams",
-  "description": "A free Kanban and Scrum board inside VS Code. Plan sprints, assign tasks, connect commits to tasks, post progress updates for non-code work, and see team contributions.",
+  "displayName": "TeamBoard",
+  "description": "A simple task board for teams inside VS Code. Plan sprints, assign tasks, link commits to tasks, and post progress updates.",
   "version": "0.2.1",
-  "publisher": "quickdm",
+  "publisher": "AryanDevTools",
   "license": "MIT",
-  "homepage": "https://quickdm.app",
-  "sponsor": {
-    "url": "https://quickdm.app"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Aryan8451/teamboard.git"
@@ -181,7 +177,6 @@
     "typescript": "^5.4.0"
   },
   "author": {
-    "name": "Aryan Goud",
-    "url": "https://quickdm.app"
+    "name": "Aryan Goud"
   }
 }

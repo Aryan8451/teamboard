@@ -1,4 +1,4 @@
-# TeamBoard: Kanban and Scrum board for VS Code
+# TeamBoard
 
 A free Kanban/Scrum board that lives inside your repo. There's no server, no account and no subscription: the board is saved as JSON in `.teamboard/` and syncs through git like your code.
 
@@ -68,9 +68,7 @@ To develop, open this folder in VS Code and press **F5**.
 
 ## About the maker
 
-Made by **Aryan Goud**, an indie maker. TeamBoard is free. If it helps your team, please leave a review on the Marketplace or use the **Sponsor** button.
-
-**Also by me: [QuickDM](https://quickdm.app)**, DM automation for creators and businesses. If your team also handles marketing or a community, take a look at [quickdm.app](https://quickdm.app).
+Made by **Aryan Goud**, an indie maker. TeamBoard is free. If it helps your team, please leave a review on the Marketplace.
 
 ## Commands
 

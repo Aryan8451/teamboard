@@ -85,7 +85,7 @@
           <span class="r r${i + 1}">${i + 1}</span>${avatar(r)}<span class="n">${esc(r.name)}</span><b>${TB.fmt(r.score)}</b>
         </div>`).join('') || `<div class="muted" style="font-size:12px;padding:2px 4px">No activity yet.</div>`}
       <div style="margin-top:8px"><button class="btn sm ghost block" data-action="team">View full leaderboard ${icon('arrow', 'sm')}</button></div>
-      <footer class="foot">Made with <span class="heart">\u2665</span> by Aryan \u00B7 <button class="foot-link" data-action="sponsor" title="Visit quickdm.app">quickdm.app</button></footer>`;
+      <footer class="foot">Made with <span class="heart">\u2665</span> by Aryan</footer>`;
   }
 
   function mini(t, mode) {

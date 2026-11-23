@@ -92,7 +92,7 @@
         ${S.help ? helpCard() : ''}
         ${S.tab === 'board' ? boardView() : S.tab === 'team' ? teamView() : activityView()}
       </div>
-      <footer class="foot">TeamBoard is free \u00B7 Made with <span class="heart">\u2665</span> by Aryan \u00B7 <button class="foot-link" data-action="sponsor" title="Visit quickdm.app">quickdm.app</button></footer>`;
+      <footer class="foot">TeamBoard is free \u00B7 Made with <span class="heart">\u2665</span> by Aryan</footer>`;
     if (S.tab === 'board') renderColumns();
     window.scrollTo(0, scrollY);
   }

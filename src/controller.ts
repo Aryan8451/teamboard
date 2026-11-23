@@ -808,7 +808,7 @@ export class Controller implements vscode.Disposable {
         case 'refresh': return void this.refreshStats();
         case 'openBoard': return openBoard(msg.tab, msg.taskId);
         case 'command': return void vscode.commands.executeCommand(msg.command);
-        case 'sponsor': return void vscode.env.openExternal(vscode.Uri.parse('https://quickdm.app'));      }
+      }
     } catch (e: any) {
       vscode.window.showErrorMessage(`TeamBoard: ${e?.message || e}`);
     }
