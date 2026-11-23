@@ -104,7 +104,21 @@ export interface BoardStore {
 export class Store implements BoardStore {
   readonly kind = 'local' as const;
 
-  constructor(public readonly root: string) {}
+  constructor(public readonly root: string) {
+    this.migrateLegacyDir();
+  }
+
+  /** Boards made before the rename lived in .teamboard/; move them so nobody loses data. */
+  private migrateLegacyDir(): void {
+    const legacy = path.join(this.root, '.teamboard');
+    try {
+      if (fs.existsSync(path.join(legacy, 'config.json')) && !fs.existsSync(this.dir)) {
+        fs.renameSync(legacy, this.dir);
+      }
+    } catch {
+      // read-only folder or locked file: leave the old board where it is
+    }
+  }
 
   get dir(): string {
     return path.join(this.root, DATA_DIR);
