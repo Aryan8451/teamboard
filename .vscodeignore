@@ -3,7 +3,8 @@ src/**
 node_modules/**
 out/**/*.map
 tsconfig.json
-.teamboard/**
+.commitboard/**
 **/*.ts
 .gitignore
 out/**
+backend/**

@@ -20,7 +20,7 @@ function html(webview: vscode.Webview, extUri: vscode.Uri, script: string, bodyC
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${n}'; img-src ${webview.cspSource} data:; font-src ${webview.cspSource};">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="${uri('styles.css')}" rel="stylesheet">
-<title>TeamBoard</title>
+<title>CommitBoard</title>
 </head>
 <body class="${bodyClass}">
 <div id="app"><div class="loading"><div class="spinner"></div></div></div>
@@ -40,7 +40,7 @@ export class BoardPanel {
     if (BoardPanel.current) {
       BoardPanel.current.panel.reveal(vscode.ViewColumn.One);
     } else {
-      const panel = vscode.window.createWebviewPanel('teamboard.board', 'TeamBoard', vscode.ViewColumn.One, {
+      const panel = vscode.window.createWebviewPanel('commitboard.board', 'CommitBoard', vscode.ViewColumn.One, {
         enableScripts: true,
         retainContextWhenHidden: true,
         localResourceRoots: [vscode.Uri.joinPath(extUri, 'media')],

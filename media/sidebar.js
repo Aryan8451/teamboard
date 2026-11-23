@@ -1,4 +1,4 @@
-// TeamBoard sidebar: current task, my tasks, up-for-grabs, mini leaderboard.
+// CommitBoard sidebar: current task, my tasks, up-for-grabs, mini leaderboard.
 (() => {
   const { esc, icon, avatar, post } = TB;
   const app = document.getElementById('app');
@@ -14,17 +14,11 @@
 
   function render() {
     if (!st.ready) {
-      app.innerHTML = `<div class="now-empty"><b>No folder open</b>Open a git repository to use TeamBoard.</div>`;
+      app.innerHTML = `<div class="now-empty"><b>No folder open</b>Open a git repository to use CommitBoard.</div>`;
       return;
     }
     if (!st.initialized) {
-      app.innerHTML = `
-        <div class="now-empty">
-          <b>TeamBoard is off for this project</b>
-          Your commits here won't trigger any popups. To use a board in this project, create the first task.
-          <div style="margin-top:10px"><button class="btn sm primary" data-action="cmd" data-command="teamboard.newTask">${icon('plus', 'sm')} Create first task</button></div>
-          <div style="margin-top:6px"><button class="btn sm ghost" data-action="board">${icon('board', 'sm')} Open board</button></div>
-        </div>`;
+      app.innerHTML = TB.setupView(st, true);
       return;
     }
     const meEmail = st.me.email;
@@ -40,9 +34,11 @@
     app.innerHTML = `
       <div class="sb-me">
         ${avatar({ name: st.me.name, email: meEmail }, 'md')}
-        <div style="min-width:0"><div class="n">${esc(st.me.name)}</div><div class="e">${esc(meEmail)}</div></div>
+        <div style="min-width:0"><div class="n">${esc(st.me.name)}</div><div class="e">${esc(meEmail)}</div><div style="margin-top:4px">${TB.liveChip(st)}</div></div>
         ${myRow?.score ? `<div class="sb-rank" title="Your rank (last 30 days)"><b>#${myRank}</b><small>${TB.fmt(myRow.score)} pts</small></div>` : ''}
       </div>
+
+      ${st.cloud?.board?.requests?.length ? `<div class="sb-notice" data-action="team">${icon('users', 'sm')} <b>${st.cloud.board.requests.length}</b> ${st.cloud.board.requests.length === 1 ? 'person wants' : 'people want'} to join &middot; <u>Review</u></div>` : ''}
 
       ${current ? `
         <div class="now-card">
@@ -57,20 +53,20 @@
           <div class="acts">
             <button class="btn sm primary" data-action="move" data-id="${current.id}" data-status="done">${icon('check', 'sm')} Mark done</button>
             <button class="btn sm" data-action="open" data-id="${current.id}" title="Post progress on non-code work">${icon('note', 'sm')} Add update</button>
-            <button class="btn sm ghost" data-action="cmd" data-command="teamboard.setCurrentTask" title="Work on a different task">Switch</button>
+            <button class="btn sm ghost" data-action="cmd" data-command="commitboard.setCurrentTask" title="Work on a different task">Switch</button>
           </div>
         </div>` : `
         <div class="now-empty">
           <b>What are you working on?</b>
           Choose a task and your commits and updates will be linked to it.
-          <div style="margin-top:10px"><button class="btn sm primary" data-action="cmd" data-command="teamboard.setCurrentTask">${icon('target', 'sm')} Choose task</button></div>
+          <div style="margin-top:10px"><button class="btn sm primary" data-action="cmd" data-command="commitboard.setCurrentTask">${icon('target', 'sm')} Choose task</button></div>
         </div>`}
 
       <div class="sb-actions">
         <button class="btn sm" data-action="board">${icon('board', 'sm')} Open board</button>
-        <button class="btn sm" data-action="cmd" data-command="teamboard.newTask">${icon('plus', 'sm')} New task</button>
-        <button class="btn sm" data-action="cmd" data-command="teamboard.logWork" title="Non-code work: marketing, design, calls\u2026">${icon('note', 'sm')} Add update</button>
-        <button class="btn sm" data-action="cmd" data-command="teamboard.linkLastCommit" title="Linked your last commit to the wrong task? Change it">${icon('link', 'sm')} Fix last commit</button>
+        <button class="btn sm" data-action="cmd" data-command="commitboard.newTask">${icon('plus', 'sm')} New task</button>
+        <button class="btn sm" data-action="cmd" data-command="commitboard.logWork" title="Non-code work: marketing, design, calls\u2026">${icon('note', 'sm')} Add update</button>
+        <button class="btn sm" data-action="cmd" data-command="commitboard.linkLastCommit" title="Linked your last commit to the wrong task? Change it">${icon('link', 'sm')} Fix last commit</button>
       </div>
 
       <div class="sb-title">My tasks <span class="n">${mine.length}</span></div>

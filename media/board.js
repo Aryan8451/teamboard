@@ -1,4 +1,4 @@
-// TeamBoard main panel: Kanban board, Team leaderboard, Activity timeline.
+// CommitBoard main panel: Kanban board, Team leaderboard, Activity timeline.
 (() => {
   const { esc, icon, avatar, post } = TB;
   const app = document.getElementById('app');
@@ -64,7 +64,15 @@
     if (!S.st) return;
     const st = S.st;
     if (!st.ready) {
-      app.innerHTML = `<div class="empty"><div class="big">\u{1F4C1}</div><h3>Open a folder to start</h3><p>TeamBoard stores your board inside the project, so open a git repository folder.</p></div>`;
+      app.innerHTML = `<div class="empty"><div class="big">\u{1F4C1}</div><h3>Open a folder to start</h3><p>CommitBoard stores your board inside the project, so open a git repository folder.</p></div>`;
+      return;
+    }
+    if (!st.initialized) {
+      app.innerHTML = `
+        <div class="page setup-page">
+          <div class="brand" style="margin-bottom:18px"><div class="logo">${icon('board')}</div><div><div class="project">CommitBoard</div><div class="sub">${esc(st.config.project)}</div></div></div>
+          ${TB.setupView(st, false)}
+        </div>`;
       return;
     }
     const scrollY = window.scrollY;
@@ -74,7 +82,7 @@
           <div class="logo">${icon('board')}</div>
           <div style="min-width:0">
             <div class="project" data-action="rename" title="Click to rename">${esc(st.config.project)}</div>
-            <div class="sub">${st.tasks.filter((t) => t.status !== 'done').length} open tasks \u00B7 ${TB.people(st).length} people</div>
+            <div class="sub">${TB.liveChip(st)} ${st.tasks.filter((t) => t.status !== 'done').length} open tasks \u00B7 ${TB.people(st).length} people</div>
           </div>
         </div>
         <nav class="tabs">
@@ -83,7 +91,7 @@
           ${tabBtn('activity', 'activity', 'Activity')}
         </nav>
         <div class="actions">
-          <button class="btn ghost icon" data-action="toggleHelp" title="How TeamBoard works">?</button>
+          <button class="btn ghost icon" data-action="toggleHelp" title="How CommitBoard works">?</button>
           <button class="btn" data-action="logWork" title="Post progress on non-code work \u2014 no commit needed">${icon('note')} Add update</button>
           <button class="btn primary" data-action="newTask">${icon('plus')} New task</button>
         </div>
@@ -92,7 +100,7 @@
         ${S.help ? helpCard() : ''}
         ${S.tab === 'board' ? boardView() : S.tab === 'team' ? teamView() : activityView()}
       </div>
-      <footer class="foot">TeamBoard is free \u00B7 Made with <span class="heart">\u2665</span> by Aryan</footer>`;
+      <footer class="foot">CommitBoard is free \u00B7 Made with <span class="heart">\u2665</span> by Aryan</footer>`;
     if (S.tab === 'board') renderColumns();
     window.scrollTo(0, scrollY);
   }
@@ -102,14 +110,14 @@
   function helpCard() {
     return `
       <div class="help">
-        <div class="help-head"><b>How TeamBoard works</b><button class="btn ghost icon sm" data-action="toggleHelp" title="Hide">${icon('x', 'sm')}</button></div>
+        <div class="help-head"><b>How CommitBoard works</b><button class="btn ghost icon sm" data-action="toggleHelp" title="Hide">${icon('x', 'sm')}</button></div>
         <div class="help-steps">
           <div class="help-step"><span class="num">1</span><div><b>Add tasks</b><p>Anyone can add work, code or not: features, bugs, marketing, design.</p></div></div>
           <div class="help-step"><span class="num">2</span><div><b>Take a task</b><p>Click <span class="kbd">Take it</span> on a card. It becomes <i>your current task</i> (shown in the status bar).</p></div></div>
           <div class="help-step"><span class="num">3</span><div><b>Show progress</b><p><b>Developers:</b> just commit, and you'll be asked which task it was for. <b>Everyone else:</b> open the task and post an update.</p></div></div>
           <div class="help-step"><span class="num">4</span><div><b>Finish</b><p>Move the task to <b>Done</b> by dragging it or using the status bar on the task. Picked the wrong task for a commit? Click <span class="kbd">Change</span> on it.</p></div></div>
         </div>
-        ${!S.st.initialized ? `<div class="help-note">${icon('bolt', 'sm')} TeamBoard is <b>off</b> for this project until you create the first task, so you won't get commit popups here. The board is then saved in <span class="mono">.teamboard/</span> in this repo. Commit &amp; push it so your whole team shares it, free.</div>` : ''}
+        ${!S.st.initialized ? `<div class="help-note">${icon('bolt', 'sm')} CommitBoard is <b>off</b> for this project until you create the first task, so you won't get commit popups here. The board is then saved in <span class="mono">.commitboard/</span> in this repo. Commit &amp; push it so your whole team shares it, free.</div>` : ''}
       </div>`;
   }
 
@@ -243,6 +251,7 @@
       : '';
 
     return `
+      ${TB.accessView(st)}
       <div class="toolbar">
         <div class="seg">${rangeBtn(7, '7 days')}${rangeBtn(30, '30 days')}${rangeBtn(90, '90 days')}${rangeBtn(0, 'All time')}</div>
         <span class="muted" title="${esc(TB.SCORE_HELP)}" style="cursor:help">${icon('bolt', 'sm')} How is impact scored?</span>
@@ -717,7 +726,7 @@
     saveRename: () => { post('renameProject', { name: val('p-name') }); closeModal(); },
     linkCommit: (el) => post('linkCommit', { hash: el.dataset.hash }),
     deleteActivity: (el) => post('deleteActivity', { email: me(), id: el.dataset.id }),
-    sponsor: () => post('sponsor'),
+    cmd: (el) => post('command', { command: el.dataset.command }),
   };
   TB.on(document.body, 'click', (action, el, e) => actions[action]?.(el, e));
 

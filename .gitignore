@@ -3,3 +3,4 @@ out/
 *.vsix
 teamboard-*-clean.vsix
 dist/
+backend/

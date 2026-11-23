@@ -70,6 +70,14 @@ export class Git {
     }
   }
 
+  async remoteUrl(): Promise<string> {
+    try {
+      return (await this.run(['remote', 'get-url', 'origin'])).trim();
+    } catch {
+      return '';
+    }
+  }
+
   async identity(): Promise<{ name: string; email: string }> {
     const get = async (key: string) => {
       try {

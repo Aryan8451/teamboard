@@ -1,4 +1,4 @@
-// Shared helpers for the TeamBoard webviews (board + sidebar).
+// Shared helpers for the CommitBoard webviews (board + sidebar).
 /* eslint-disable no-unused-vars */
 const vscodeApi = acquireVsCodeApi();
 
@@ -73,6 +73,11 @@ const TB = (() => {
     play: '<path d="m6 4 14 8-14 8z"/>',
     edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>',
     tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+    cloud: '<path d="M17.5 19H8a5 5 0 1 1 .9-9.9A6 6 0 0 1 20 11.5a3.8 3.8 0 0 1-2.5 7.5z"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+    shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+    github: '<path d="M9 19c-4 1.5-4-2-6-2.5m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/>',
   };
   const icon = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
 
@@ -207,9 +212,133 @@ const TB = (() => {
   function on(root, event, handler) {
     root.addEventListener(event, (e) => {
       const el = e.target.closest('[data-action]');
-      if (el && root.contains(el)) handler(el.dataset.action, el, e);
+      if (!el || !root.contains(el)) return;
+      if (el.dataset.action === 'cloud') {
+        // Cloud buttons carry their message as JSON: data-msg='{"type":"cloudOpen","boardId":"..."}'
+        e.stopPropagation();
+        const msg = JSON.parse(el.dataset.msg || '{}');
+        if (msg.importFrom) msg.importLocal = !!document.getElementById(msg.importFrom)?.checked;
+        vscodeApi.postMessage(msg);
+        return;
+      }
+      handler(el.dataset.action, el, e);
     });
   }
 
-  return { post, esc, STATUSES, statusOf, PRIORITIES, POINTS, color, catColor, initials, avatar, icon, timeAgo, fmt, DAY, TAG_RE, people, byEmail, stats, SCORE_HELP, commitLinks, commitTask, taskCommits, commitCounts, updateCounts, firstName, sparkline, toast, on };
+  // ------------------------------------------------------------------ cloud (live team boards)
+
+  const cloudBtn = (msg, label, cls = 'btn sm') => `<button class="${cls}" data-action="cloud" data-msg="${esc(JSON.stringify(msg))}">${label}</button>`;
+
+  function liveChip(st) {
+    const c = st.cloud;
+    if (!c || !st.initialized) return '';
+    if (c.mode === 'local') return `<span class="live-chip local" title="Stored in .commitboard/ in this repo. Teammates see changes after git pull.">${icon('file', 'sm')} Local board</span>`;
+    const map = { online: ['on', 'Live'], connecting: ['wait', 'Connecting'], offline: ['off', 'Offline'] };
+    const [cls, label] = map[c.live] || map.offline;
+    return `<span class="live-chip ${cls}" title="${c.live === 'online' ? 'Changes sync instantly with your team' : 'Changes will sync when the connection is back'}"><i></i>${label}</span>`;
+  }
+
+  /** Shown when this project has no board yet: choose a live team board or a local git board. */
+  function setupView(st, compact) {
+    const c = st.cloud || {};
+    const busy = c.busy ? ' disabled' : '';
+    const localCard = `
+      <div class="setup-card featured">
+        <div class="setup-title">${icon('board')} Free board <span class="pill" style="color:var(--green)">No sign-up</span></div>
+        <p>Saved as files in <span class="mono">.commitboard/</span> in this repo, and nothing is sent anywhere. Commit &amp; push that folder to share it; teammates see changes after <span class="mono">git pull</span>.</p>
+        ${c.localHasData
+          ? cloudBtn({ type: 'useLocal' }, `${icon('board', 'sm')} Open free board`, 'btn sm primary')
+          : `<button class="btn sm primary" data-action="cmd" data-command="commitboard.newTask">${icon('plus', 'sm')} Start free board</button>`}
+      </div>`;
+    if (!c.available) {
+      return `<div class="setup">
+        <div class="setup-head"><b>CommitBoard is off for this project</b><span>Your commits here won't trigger any popups. Create the first task to start a board.</span></div>
+        ${localCard}</div>`;
+    }
+    let teamBody;
+    if (!c.signedIn) {
+      teamBody = `<p>Everyone sees changes instantly, with no push or pull. You decide who can join. Needs a GitHub sign-in; the board is stored on the CommitBoard server.</p>
+        ${cloudBtn({ type: 'cloudSignIn' }, `${icon('github', 'sm')} Sign in with GitHub`, 'btn sm' + busy)}`;
+    } else {
+      const boards = (c.repoBoards || []).map((b) => {
+        const owner = b.owner ? ` &middot; by ${esc(b.owner.name || b.owner.login)}` : '';
+        const action = b.role
+          ? cloudBtn({ type: 'cloudOpen', boardId: b.id }, 'Open', 'btn sm primary' + busy)
+          : b.pending
+            ? `<span class="pill" style="color:var(--amber)">Waiting for approval</span>${cloudBtn({ type: 'cloudCancelRequest', boardId: b.id }, 'Cancel', 'btn sm ghost' + busy)}`
+            : cloudBtn({ type: 'cloudRequestJoin', boardId: b.id }, 'Ask to join', 'btn sm primary' + busy);
+        return `<div class="board-row"><div class="grow"><b>${esc(b.name)}</b><div class="muted" style="font-size:11px">${b.memberCount} member${b.memberCount === 1 ? '' : 's'}${owner}</div></div>${action}</div>`;
+      }).join('');
+      teamBody = `
+        <div class="signed-in">${icon('github', 'sm')} ${esc(c.user?.login || c.user?.name || 'Signed in')} ${cloudBtn({ type: 'cloudSignOut' }, 'Sign out', 'link-btn')}</div>
+        ${boards ? `<div class="muted" style="font-size:11px;margin:8px 0 4px">Team boards for this repo</div>${boards}` : `<p>No team board for this repo yet. Create one; teammates who open this repo can then ask to join.</p>`}
+        <div class="setup-actions">
+          ${cloudBtn({ type: 'cloudCreate', importFrom: 'cb-import' }, `${icon('plus', 'sm')} Create team board`, 'btn sm' + (boards ? '' : ' primary') + busy)}
+          ${cloudBtn({ type: 'cloudJoinCode' }, 'Join with invite code', 'btn sm ghost' + busy)}
+        </div>
+        ${c.localHasData ? `<label class="check" style="font-size:11.5px"><input type="checkbox" id="cb-import" checked> Copy my local board's tasks into it</label>` : ''}`;
+    }
+    return `<div class="setup ${compact ? 'compact' : ''}">
+      <div class="setup-head"><b>Set up a board for this project</b><span>Until you do, commits here won't trigger any popups.</span></div>
+      ${c.error ? `<div class="setup-error">${icon('x', 'sm')} ${esc(c.error)} ${cloudBtn({ type: 'cloudRefresh' }, 'Retry', 'link-btn')}</div>` : ''}
+      ${localCard}
+      <div class="setup-card">
+        <div class="setup-title">${icon('cloud')} CommitBoard Cloud <span class="pill">Optional</span></div>
+        ${teamBody}
+      </div>
+    </div>`;
+  }
+
+  /** Team tab section: who has access, join requests, invite code (cloud), or an upgrade offer (local). */
+  function accessView(st) {
+    const c = st.cloud || {};
+    if (!c.available) return '';
+    if (c.mode === 'local') {
+      return `<div class="access upgrade">
+        <div class="grow"><b>${icon('cloud', 'sm')} Optional: CommitBoard Cloud</b><div class="muted" style="font-size:12px">Want changes to sync instantly, without git pull, and to approve who joins? Move this board to the cloud. Your tasks are copied over. Your free board keeps working either way.</div></div>
+        ${c.signedIn
+          ? cloudBtn({ type: 'cloudCreate', importLocal: true }, `${icon('cloud', 'sm')} Move to Cloud`, 'btn')
+          : cloudBtn({ type: 'cloudSignIn' }, `${icon('github', 'sm')} Sign in with GitHub`, 'btn')}
+      </div>`;
+    }
+    const b = c.board;
+    if (!b) return '';
+    const admin = b.role === 'owner' || b.role === 'admin';
+    const myId = c.user?.id;
+    const requests = admin && b.requests.length
+      ? `<div class="access-block"><div class="access-label">${icon('users', 'sm')} Join requests <span class="badge">${b.requests.length}</span></div>
+          ${b.requests.map((r) => `<div class="person-row">${avatar({ name: r.name || r.login, email: r.gitEmail || r.email || r.login })}<div class="grow"><b>${esc(r.name || r.login)}</b><div class="muted" style="font-size:11px">@${esc(r.login)} &middot; asked ${timeAgo(r.at)}</div></div>
+            ${cloudBtn({ type: 'cloudDecide', userId: r.id, approve: true }, `${icon('check', 'sm')} Accept`, 'btn sm primary')}${cloudBtn({ type: 'cloudDecide', userId: r.id, approve: false }, 'Reject', 'btn sm ghost')}</div>`).join('')}</div>`
+      : '';
+    const members = b.members.map((m) => {
+      const actions = [];
+      if (b.role === 'owner' && m.role !== 'owner') {
+        actions.push(cloudBtn({ type: 'cloudSetRole', userId: m.id, role: m.role === 'admin' ? 'member' : 'admin' }, m.role === 'admin' ? 'Make member' : 'Make admin', 'btn sm ghost'));
+      }
+      if (admin && m.id !== myId && m.role !== 'owner' && !(b.role === 'admin' && m.role === 'admin')) {
+        actions.push(cloudBtn({ type: 'cloudRemoveMember', userId: m.id, name: m.name || m.login }, 'Remove', 'btn sm ghost danger-text'));
+      }
+      return `<div class="person-row">${avatar({ name: m.name || m.login, email: m.gitEmail || m.email || m.login })}<div class="grow"><b>${esc(m.name || m.login)}</b>${m.id === myId ? ' <span class="tag">you</span>' : ''}<div class="muted" style="font-size:11px">@${esc(m.login)}</div></div><span class="role role-${m.role}">${m.role}</span>${actions.join('')}</div>`;
+    }).join('');
+    const invite = admin
+      ? `<div class="access-block"><div class="access-label">${icon('link', 'sm')} Invite</div>
+          <div class="invite"><span class="mono code">${esc(b.inviteCode || '')}</span>${cloudBtn({ type: 'copy', text: b.inviteCode }, `${icon('copy', 'sm')} Copy`, 'btn sm')}${cloudBtn({ type: 'cloudSettings', settings: { regenerateCode: true } }, 'New code', 'btn sm ghost')}</div>
+          <div class="seg" style="margin-top:8px">
+            ${cloudBtn({ type: 'cloudSettings', settings: { joinPolicy: 'approve' } }, 'I approve everyone', b.joinPolicy === 'approve' ? 'on' : '')}
+            ${cloudBtn({ type: 'cloudSettings', settings: { joinPolicy: 'code' } }, 'Invite code joins instantly', b.joinPolicy === 'code' ? 'on' : '')}
+          </div>
+          <div class="muted" style="font-size:11px;margin-top:6px">Teammates who open this repo can also find the board and ask to join.</div></div>`
+      : '';
+    return `<div class="access">
+      <div class="access-head"><div class="grow"><b>${icon('shield', 'sm')} ${esc(b.name)}</b> ${liveChip(st)}<div class="muted" style="font-size:12px">CommitBoard Cloud &middot; you are ${{ owner: 'the owner', admin: 'an admin', member: 'a member' }[b.role]}</div></div>
+        ${b.role === 'owner' ? cloudBtn({ type: 'cloudDelete' }, 'Delete board', 'btn sm ghost danger-text') : cloudBtn({ type: 'cloudLeave' }, 'Leave board', 'btn sm ghost')}
+        ${cloudBtn({ type: 'cloudSignOut' }, `${icon('logout', 'sm')} Sign out`, 'btn sm ghost')}
+      </div>
+      ${requests}
+      <div class="access-block"><div class="access-label">${icon('users', 'sm')} Members <span class="badge">${b.members.length}</span></div>${members}</div>
+      ${invite}
+    </div>`;
+  }
+
+  return { post, esc, STATUSES, statusOf, PRIORITIES, POINTS, color, catColor, initials, avatar, icon, timeAgo, fmt, DAY, TAG_RE, people, byEmail, stats, SCORE_HELP, commitLinks, commitTask, taskCommits, commitCounts, updateCounts, firstName, sparkline, toast, on, liveChip, setupView, accessView };
 })();

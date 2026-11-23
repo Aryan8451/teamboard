@@ -1,8 +1,8 @@
 {
-  "name": "teamboard",
-  "displayName": "TeamBoard",
+  "name": "commitboard",
+  "displayName": "CommitBoard",
   "description": "A simple task board for teams inside VS Code. Plan sprints, assign tasks, link commits to tasks, and post progress updates.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "AryanDevTools",
   "license": "MIT",
   "repository": {
@@ -36,86 +36,86 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "teamboard",
-          "title": "TeamBoard",
+          "id": "commitboard",
+          "title": "CommitBoard",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "teamboard": [
+      "commitboard": [
         {
           "type": "webview",
-          "id": "teamboard.sidebar",
+          "id": "commitboard.sidebar",
           "name": "My Work"
         }
       ]
     },
     "commands": [
       {
-        "command": "teamboard.openBoard",
+        "command": "commitboard.openBoard",
         "title": "Open Board",
-        "category": "TeamBoard",
+        "category": "CommitBoard",
         "icon": "$(project)"
       },
       {
-        "command": "teamboard.openTeam",
+        "command": "commitboard.openTeam",
         "title": "Open Contributors & Leaderboard",
-        "category": "TeamBoard",
+        "category": "CommitBoard",
         "icon": "$(organization)"
       },
       {
-        "command": "teamboard.newTask",
+        "command": "commitboard.newTask",
         "title": "New Task",
-        "category": "TeamBoard",
+        "category": "CommitBoard",
         "icon": "$(add)"
       },
       {
-        "command": "teamboard.logWork",
+        "command": "commitboard.logWork",
         "title": "Add Update (non-code work: marketing, design, meetings...)",
-        "category": "TeamBoard",
+        "category": "CommitBoard",
         "icon": "$(note)"
       },
       {
-        "command": "teamboard.setCurrentTask",
+        "command": "commitboard.setCurrentTask",
         "title": "Set Current Task",
-        "category": "TeamBoard"
+        "category": "CommitBoard"
       },
       {
-        "command": "teamboard.linkLastCommit",
+        "command": "commitboard.linkLastCommit",
         "title": "Link / Change Task of Last Commit",
-        "category": "TeamBoard"
+        "category": "CommitBoard"
       },
       {
-        "command": "teamboard.refresh",
+        "command": "commitboard.refresh",
         "title": "Refresh",
-        "category": "TeamBoard",
+        "category": "CommitBoard",
         "icon": "$(refresh)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "teamboard.openBoard",
-          "when": "view == teamboard.sidebar",
+          "command": "commitboard.openBoard",
+          "when": "view == commitboard.sidebar",
           "group": "navigation@1"
         },
         {
-          "command": "teamboard.newTask",
-          "when": "view == teamboard.sidebar",
+          "command": "commitboard.newTask",
+          "when": "view == commitboard.sidebar",
           "group": "navigation@2"
         },
         {
-          "command": "teamboard.refresh",
-          "when": "view == teamboard.sidebar",
+          "command": "commitboard.refresh",
+          "when": "view == commitboard.sidebar",
           "group": "navigation@3"
         }
       ]
     },
     "configuration": {
-      "title": "TeamBoard",
+      "title": "CommitBoard",
       "properties": {
-        "teamboard.commitPrompt": {
+        "commitboard.commitPrompt": {
           "type": "string",
           "enum": [
             "always",
@@ -128,22 +128,22 @@
           "default": "always",
           "description": "When to show the 'What was this commit for?' window."
         },
-        "teamboard.promptOnPush": {
+        "commitboard.promptOnPush": {
           "type": "boolean",
           "default": true,
           "description": "After a push, offer to link any of your pushed commits that are not linked to a task yet."
         },
-        "teamboard.autoTagCommitMessage": {
+        "commitboard.autoTagCommitMessage": {
           "type": "boolean",
           "default": true,
           "description": "Pre-fill the Source Control commit box with your current task tag, e.g. [T-AB12]."
         },
-        "teamboard.maxCommits": {
+        "commitboard.maxCommits": {
           "type": "number",
           "default": 5000,
           "description": "Maximum number of commits read from git history for contributor statistics."
         },
-        "teamboard.excludeFromLineStats": {
+        "commitboard.excludeFromLineStats": {
           "type": "array",
           "items": {
             "type": "string"
@@ -160,23 +160,37 @@
             "build/**"
           ],
           "description": "Glob patterns of files ignored when counting lines added/removed (lockfiles, build output...)."
+        },
+        "commitboard.serverUrl": {
+          "type": "string",
+          "default": "https://commitboard-api.zinro.app",
+          "description": "Server for the optional CommitBoard Cloud (live team boards). Only contacted after you choose Cloud and sign in. Free local boards never use it."
+        },
+        "commitboard.cloud.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the optional CommitBoard Cloud (live sync) option. Turn off to use free local boards only."
         }
       }
     }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./ --noEmit && esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
-    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --watch",
-    "package": "npx --yes @vscode/vsce package"
+    "compile": "tsc -p ./ --noEmit && esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:bufferutil --external:utf-8-validate --format=cjs --platform=node --target=node18",
+    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:bufferutil --external:utf-8-validate --format=cjs --platform=node --target=node18 --watch",
+    "package": "npx --yes @vscode/vsce package --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.5.13",
     "esbuild": "^0.24.0",
     "typescript": "^5.4.0"
   },
   "author": {
     "name": "Aryan Goud"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
   }
 }

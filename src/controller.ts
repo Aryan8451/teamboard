@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ActivityEntry, BoardConfig, DATA_DIR, Member, newId, Status, Store, Task } from './store';
+import { ActivityEntry, BoardConfig, BoardStore, DATA_DIR, Member, newId, Status, Store, Task } from './store';
 import { CommitStat, Git, GitAPI, GitRepository, getGitApi } from './git';
+import { CloudBoardMeta, CloudBoardSummary, CloudClient, CloudError, CloudStore, CloudUser, LiveStatus, Realtime } from './cloud';
 
 export const TAG_RE = /\[?#?(T-[A-Z0-9]{4})\]?/i;
 
@@ -24,6 +25,22 @@ export interface BoardState {
   commits: CommitStat[];
   currentTaskId: string | null;
   statsLoading: boolean;
+  cloud: CloudState;
+}
+
+export interface CloudState {
+  available: boolean; // server URL configured
+  signedIn: boolean;
+  user?: CloudUser;
+  mode: 'local' | 'cloud';
+  live: LiveStatus;
+  board?: CloudBoardMeta;
+  repoKey: string;
+  repoBoards: CloudBoardSummary[];
+  myBoards: CloudBoardSummary[];
+  busy: boolean;
+  error?: string;
+  localHasData: boolean;
 }
 
 type Listener = (s: BoardState) => void;
@@ -36,7 +53,17 @@ interface LinkItem extends vscode.QuickPickItem {
 }
 
 export class Controller implements vscode.Disposable {
-  private store?: Store;
+  private store?: BoardStore; // the active board: local files or cloud
+  private localStore?: Store;
+  private cloudStore?: CloudStore;
+  private cloud: CloudClient;
+  private live: Realtime;
+  private repoKey = '';
+  private repoBoards: CloudBoardSummary[] = [];
+  private myBoards: CloudBoardSummary[] = [];
+  private cloudBusy = false;
+  private cloudError?: string;
+  private liveTimer?: NodeJS.Timeout;
   private git?: Git;
   private gitApi?: GitAPI;
   private me: Member = { name: 'You', email: '' };
@@ -51,8 +78,19 @@ export class Controller implements vscode.Disposable {
 
   constructor(private ctx: vscode.ExtensionContext) {
     this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-    this.status.command = 'teamboard.setCurrentTask';
-    this.disposables.push(this.status);
+    this.status.command = 'commitboard.setCurrentTask';
+    // Cloud is optional: with it switched off, CommitBoard never talks to any server.
+    this.cloud = new CloudClient(ctx, () => (this.cfg('cloud.enabled', true) ? this.cfg('serverUrl', '').trim() : ''));
+    this.live = new Realtime(this.cloud, {
+      onChanged: () => {
+        // Coalesce bursts of edits into one re-fetch.
+        clearTimeout(this.liveTimer);
+        this.liveTimer = setTimeout(() => this.cloudStore?.refresh().then(() => this.cacheCloud()).catch(() => undefined), 300);
+      },
+      onMembership: () => this.onMembershipChanged(),
+      onStatus: () => this.broadcast(),
+    });
+    this.disposables.push(this.status, this.live);
   }
 
   // ---------------------------------------------------------------- setup
@@ -68,15 +106,20 @@ export class Controller implements vscode.Disposable {
     const probe = new Git(folder.uri.fsPath, bin);
     const root = (await probe.topLevel()) || folder.uri.fsPath;
     this.git = new Git(root, bin);
-    this.store = new Store(root);
+    this.localStore = new Store(root);
+    this.store = this.localStore;
 
     const id = await this.git.identity();
     this.me = { name: id.name || 'You', email: id.email || 'me@local' };
+    this.repoKey = await this.git.remoteUrl();
 
     const watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(root, `${DATA_DIR}/**`)
     );
     const onFs = () => {
+      if (this.store?.kind !== 'local') {
+        return;
+      }
       clearTimeout(this.fsTimer);
       this.fsTimer = setTimeout(() => this.broadcast(), 250);
     };
@@ -92,11 +135,14 @@ export class Controller implements vscode.Disposable {
 
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration('teamboard')) {
+        if (e.affectsConfiguration('commitboard')) {
           this.refreshStats();
         }
       })
     );
+
+    await this.cloud.restore();
+    await this.restoreCloudBoard();
 
     this.renderStatus();
     this.applyCommitTag();
@@ -104,7 +150,274 @@ export class Controller implements vscode.Disposable {
   }
 
   dispose(): void {
+    clearTimeout(this.liveTimer);
     this.disposables.forEach((d) => d.dispose());
+  }
+
+  // ---------------------------------------------------------------- cloud boards
+
+  private get wsBoardId(): string | undefined {
+    return this.ctx.workspaceState.get<string>('cloudBoardId');
+  }
+
+  /** On startup: reopen the cloud board this workspace was using (cached copy first, so it works offline). */
+  private async restoreCloudBoard(): Promise<void> {
+    if (!this.cloud.configured || !this.cloud.signedIn) {
+      return;
+    }
+    this.live.connect();
+    const boardId = this.wsBoardId;
+    if (boardId) {
+      await this.openCloudBoard(boardId, true);
+    }
+    this.discoverBoards().catch(() => undefined);
+  }
+
+  private async openCloudBoard(boardId: string, quiet = false): Promise<boolean> {
+    const store = new CloudStore(
+      this.cloud,
+      boardId,
+      () => this.broadcast(),
+      (msg) => {
+        this.cloudError = msg;
+        vscode.window.showWarningMessage(`CommitBoard: ${msg}`);
+      }
+    );
+    const cached = this.ctx.workspaceState.get<Parameters<CloudStore['apply']>[0]>('cloudCache');
+    if (cached && cached.board?.id === boardId) {
+      store.apply(cached);
+    }
+    this.cloudStore = store;
+    this.store = store;
+    this.live.subscribe(boardId);
+    await this.ctx.workspaceState.update('cloudBoardId', boardId);
+    try {
+      await store.refresh();
+      this.cacheCloud();
+      this.cloudError = undefined;
+    } catch (e) {
+      const err = e as CloudError;
+      if (err.status === 403 || err.status === 404) {
+        // Removed from the board, or it was deleted.
+        await this.leaveCloudMode();
+        if (!quiet) {
+          vscode.window.showWarningMessage(`CommitBoard: ${err.message}`);
+        }
+        return false;
+      }
+      this.cloudError = err.message; // offline: keep the cached copy
+    }
+    this.broadcast();
+    return true;
+  }
+
+  private cacheCloud(): void {
+    const s = this.cloudStore;
+    if (s?.meta) {
+      this.ctx.workspaceState.update('cloudCache', {
+        board: s.meta,
+        config: s.loadConfig(),
+        extraMembers: s.loadMembers(),
+        tasks: s.loadTasks(),
+        activity: s.loadActivity(),
+      });
+    }
+  }
+
+  private async leaveCloudMode(): Promise<void> {
+    this.cloudStore = undefined;
+    this.store = this.localStore;
+    this.live.subscribe(undefined);
+    await this.ctx.workspaceState.update('cloudBoardId', undefined);
+    await this.ctx.workspaceState.update('cloudCache', undefined);
+    this.broadcast();
+  }
+
+  private async discoverBoards(): Promise<void> {
+    if (!this.cloud.signedIn) {
+      return;
+    }
+    const res = await this.cloud.request<{ repoBoards: CloudBoardSummary[]; myBoards: CloudBoardSummary[] }>(
+      'GET',
+      `/api/boards?repo=${encodeURIComponent(this.repoKey)}`
+    );
+    this.repoBoards = res.repoBoards;
+    this.myBoards = res.myBoards;
+    this.broadcast();
+  }
+
+  private async onMembershipChanged(): Promise<void> {
+    const wasPending = new Set(this.repoBoards.filter((b) => b.pending).map((b) => b.id));
+    await this.discoverBoards().catch(() => undefined);
+    const current = this.cloudStore?.boardId;
+    if (current && !this.myBoards.some((b) => b.id === current)) {
+      await this.leaveCloudMode();
+      vscode.window.showWarningMessage('CommitBoard: you no longer have access to that team board.');
+      return;
+    }
+    if (current) {
+      await this.cloudStore?.refresh().catch(() => undefined);
+      return;
+    }
+    const approved = this.repoBoards.find((b) => wasPending.has(b.id) && b.role);
+    if (approved) {
+      await this.openCloudBoard(approved.id);
+      vscode.window.showInformationMessage(`🎉 You were accepted to the team board "${approved.name}".`);
+    }
+  }
+
+  /** Runs a cloud action with a busy flag and friendly errors. */
+  private async cloudAction(fn: () => Promise<void>): Promise<void> {
+    this.cloudBusy = true;
+    this.cloudError = undefined;
+    this.broadcast();
+    try {
+      await fn();
+    } catch (e) {
+      this.cloudError = (e as Error).message;
+      vscode.window.showErrorMessage(`CommitBoard: ${this.cloudError}`);
+    } finally {
+      this.cloudBusy = false;
+      this.broadcast();
+    }
+  }
+
+  async cloudSignIn(): Promise<void> {
+    await this.cloudAction(async () => {
+      if (!(await this.cloud.signIn(this.me.email, true))) {
+        throw new Error('GitHub sign-in was cancelled');
+      }
+      this.live.connect();
+      await this.discoverBoards();
+    });
+  }
+
+  async cloudSignOut(): Promise<void> {
+    this.live.close();
+    await this.leaveCloudMode();
+    await this.cloud.signOut();
+    this.repoBoards = [];
+    this.myBoards = [];
+    this.broadcast();
+  }
+
+  private boardPath(sub = ''): string {
+    return `/api/boards/${this.cloudStore?.boardId}${sub}`;
+  }
+
+  private async applyBoardPayload(p: Parameters<CloudStore['apply']>[0]): Promise<void> {
+    this.cloudStore?.apply(p);
+    this.cacheCloud();
+    this.broadcast();
+  }
+
+  async handleCloudMessage(msg: any): Promise<void> {
+    switch (msg.type) {
+      case 'cloudSignIn':
+        return this.cloudSignIn();
+      case 'cloudSignOut':
+        return this.cloudSignOut();
+      case 'cloudRefresh':
+        return this.cloudAction(async () => {
+          await this.discoverBoards();
+          await this.cloudStore?.refresh();
+        });
+      case 'cloudCreate':
+        return this.cloudAction(async () => {
+          const local = this.localStore;
+          const importLocal = !!msg.importLocal && !!local?.isInitialized();
+          const p = await this.cloud.request<Parameters<CloudStore['apply']>[0]>('POST', '/api/boards', {
+            name: String(msg.name || local?.loadConfig().project || 'Team board'),
+            repo: this.repoKey,
+            import: importLocal
+              ? { config: local!.loadConfig(), tasks: local!.loadTasks(), activity: local!.loadActivity(), extraMembers: local!.loadMembers() }
+              : undefined,
+          });
+          await this.ctx.workspaceState.update('cloudCache', p);
+          await this.openCloudBoard(p.board.id);
+          await this.discoverBoards();
+          vscode.window.showInformationMessage(`CommitBoard: team board "${p.board.name}" created. Teammates who open this repo can now ask to join.`);
+        });
+      case 'cloudOpen':
+        return this.cloudAction(async () => {
+          await this.openCloudBoard(String(msg.boardId));
+        });
+      case 'cloudRequestJoin':
+        return this.cloudAction(async () => {
+          await this.cloud.request('POST', `/api/boards/${msg.boardId}/requests`);
+          await this.discoverBoards();
+        });
+      case 'cloudCancelRequest':
+        return this.cloudAction(async () => {
+          await this.cloud.request('DELETE', `/api/boards/${msg.boardId}/requests/me`);
+          await this.discoverBoards();
+        });
+      case 'cloudJoinCode': {
+        const code = await vscode.window.showInputBox({ title: 'Join a team board', prompt: 'Enter the invite code from the board owner', placeHolder: 'ABCD-EFGH', ignoreFocusOut: true });
+        if (!code) {
+          return;
+        }
+        return this.cloudAction(async () => {
+          const res = await this.cloud.request<{ status: string; boardId: string }>('POST', '/api/boards/join', { code });
+          await this.discoverBoards();
+          if (res.status === 'member') {
+            await this.openCloudBoard(res.boardId);
+          } else {
+            vscode.window.showInformationMessage('CommitBoard: request sent. You will get access as soon as the owner approves.');
+          }
+        });
+      }
+      case 'cloudDecide':
+        return this.cloudAction(async () => {
+          await this.applyBoardPayload(await this.cloud.request('POST', this.boardPath(`/requests/${msg.userId}/${msg.approve ? 'approve' : 'reject'}`)));
+        });
+      case 'cloudSetRole':
+        return this.cloudAction(async () => {
+          await this.applyBoardPayload(await this.cloud.request('PATCH', this.boardPath(`/members/${msg.userId}`), { role: msg.role }));
+        });
+      case 'cloudRemoveMember': {
+        const ok = await vscode.window.showWarningMessage(`Remove ${msg.name || 'this person'} from the team board?`, { modal: true }, 'Remove');
+        if (ok) {
+          return this.cloudAction(async () => {
+            await this.cloud.request('DELETE', this.boardPath(`/members/${msg.userId}`));
+            await this.cloudStore?.refresh();
+          });
+        }
+        return;
+      }
+      case 'cloudSettings':
+        return this.cloudAction(async () => {
+          await this.applyBoardPayload(await this.cloud.request('PATCH', this.boardPath('/settings'), msg.settings));
+        });
+      case 'cloudLeave': {
+        const ok = await vscode.window.showWarningMessage('Leave this team board? You will need to ask to join again.', { modal: true }, 'Leave');
+        if (ok) {
+          return this.cloudAction(async () => {
+            await this.cloud.request('DELETE', this.boardPath('/members/me'));
+            await this.leaveCloudMode();
+            await this.discoverBoards();
+          });
+        }
+        return;
+      }
+      case 'cloudDelete': {
+        const ok = await vscode.window.showWarningMessage('Delete this team board for everyone? All tasks and activity will be lost.', { modal: true }, 'Delete board');
+        if (ok) {
+          return this.cloudAction(async () => {
+            await this.cloud.request('DELETE', this.boardPath());
+            await this.leaveCloudMode();
+            await this.discoverBoards();
+          });
+        }
+        return;
+      }
+      case 'useLocal':
+        return this.leaveCloudMode();
+      case 'copy':
+        await vscode.env.clipboard.writeText(String(msg.text || ''));
+        vscode.window.setStatusBarMessage('$(check) Copied', 2000);
+        return;
+    }
   }
 
   onState(fn: Listener): vscode.Disposable {
@@ -114,7 +427,7 @@ export class Controller implements vscode.Disposable {
   }
 
   private cfg<T>(key: string, def: T): T {
-    return vscode.workspace.getConfiguration('teamboard').get<T>(key, def);
+    return vscode.workspace.getConfiguration('commitboard').get<T>(key, def);
   }
 
   // ---------------------------------------------------------------- state
@@ -130,17 +443,38 @@ export class Controller implements vscode.Disposable {
     if (current && !tasks.some((t) => t.id === current)) {
       current = null;
     }
+    const meta = this.cloudStore && s === this.cloudStore ? this.cloudStore.meta : undefined;
+    // Cloud members (signed-in teammates) are people too: they can be assigned and ranked.
+    const cloudPeople: Member[] = (meta?.members || []).map((m) => ({
+      name: m.name || m.login,
+      email: (m.gitEmail || m.email || `${m.login}@users.noreply.github.com`).toLowerCase(),
+      role: m.role === 'member' ? undefined : m.role,
+    }));
     return {
       ready: !!s,
       initialized: !!s?.isInitialized(),
       me: this.me,
       config: s ? s.loadConfig() : { project: 'No folder open', sprints: [], activeSprintId: null, categories: [] },
       tasks,
-      members: s ? s.loadMembers() : [],
+      members: s ? [...cloudPeople, ...s.loadMembers()] : [],
       activity: s ? s.loadActivity() : [],
       commits: this.commits,
       currentTaskId: current,
       statsLoading: this.statsLoading,
+      cloud: {
+        available: this.cloud.configured,
+        signedIn: this.cloud.signedIn,
+        user: this.cloud.user,
+        mode: s?.kind === 'cloud' ? 'cloud' : 'local',
+        live: this.live.status,
+        board: meta,
+        repoKey: this.repoKey,
+        repoBoards: this.repoBoards,
+        myBoards: this.myBoards,
+        busy: this.cloudBusy,
+        error: this.cloudError,
+        localHasData: !!this.localStore?.isInitialized(),
+      },
     };
   }
 
@@ -172,7 +506,7 @@ export class Controller implements vscode.Disposable {
     }
   }
 
-  /** TeamBoard only acts in projects that have a board (.teamboard/ exists). */
+  /** CommitBoard only acts in projects that have a board (.commitboard/ exists). */
   private get boardActive(): boolean {
     return !!this.store?.isInitialized();
   }
@@ -185,19 +519,19 @@ export class Controller implements vscode.Disposable {
     const t = st.tasks.find((x) => x.id === st.currentTaskId);
     if (t) {
       this.status.text = `$(target) ${t.id}: ${t.title.length > 32 ? t.title.slice(0, 31) + '…' : t.title}`;
-      this.status.tooltip = `TeamBoard — current task (${STATUS_LABEL[t.status]})\nClick to change`;
+      this.status.tooltip = `CommitBoard — current task (${STATUS_LABEL[t.status]})\nClick to change`;
     } else {
       this.status.text = '$(target) Pick a task';
-      this.status.tooltip = 'TeamBoard — no current task. Click to choose one.';
+      this.status.tooltip = 'CommitBoard — no current task. Click to choose one.';
     }
     this.status.show();
   }
 
   // ---------------------------------------------------------------- tasks
 
-  private requireStore(): Store {
+  private requireStore(): BoardStore {
     if (!this.store) {
-      throw new Error('Open a folder to use TeamBoard.');
+      throw new Error('Open a folder to use CommitBoard.');
     }
     return this.store;
   }
@@ -514,7 +848,7 @@ export class Controller implements vscode.Disposable {
     const recent = await this.git.recentCommits(Math.min(count, 20)).catch(() => []);
     const unlinked = recent.filter((c) => c.email === this.me.email && !linked.has(c.hash) && !TAG_RE.test(c.subject));
     if (!unlinked.length) {
-      vscode.window.setStatusBarMessage(`$(check) TeamBoard: pushed ${count} commit(s), all linked`, 4000);
+      vscode.window.setStatusBarMessage(`$(check) CommitBoard: pushed ${count} commit(s), all linked`, 4000);
       return;
     }
     const pick = await vscode.window.showInformationMessage(
@@ -541,7 +875,7 @@ export class Controller implements vscode.Disposable {
       target = (await this.git.recentCommits(1).catch(() => []))[0];
     }
     if (!target) {
-      vscode.window.showWarningMessage('TeamBoard: no commits found in this repository yet.');
+      vscode.window.showWarningMessage('CommitBoard: no commits found in this repository yet.');
       return;
     }
     await this.promptLink(target.hash, target.subject, true);
@@ -599,8 +933,8 @@ export class Controller implements vscode.Disposable {
     return new Promise((resolve) => {
       const qp = vscode.window.createQuickPick<LinkItem>();
       qp.title = relink
-        ? `TeamBoard · Change task for commit ${hash.slice(0, 7)}${linkedTo ? ` (currently ${linkedTo})` : ''}`
-        : `TeamBoard · What was commit ${hash.slice(0, 7)} for?`;
+        ? `CommitBoard · Change task for commit ${hash.slice(0, 7)}${linkedTo ? ` (currently ${linkedTo})` : ''}`
+        : `CommitBoard · What was commit ${hash.slice(0, 7)} for?`;
       qp.placeholder = `“${subject}” — pick a task, or type a note and press Enter`;
       qp.ignoreFocusOut = true;
       qp.matchOnDescription = true;
@@ -625,7 +959,7 @@ export class Controller implements vscode.Disposable {
         }
         if (sel.unlink) {
           this.recordCommit(hash, subject, undefined, undefined, undefined, true);
-          vscode.window.setStatusBarMessage(`$(debug-disconnect) TeamBoard: ${hash.slice(0, 7)} unlinked`, 4000);
+          vscode.window.setStatusBarMessage(`$(debug-disconnect) CommitBoard: ${hash.slice(0, 7)} unlinked`, 4000);
           resolve(true);
           return;
         }
@@ -637,7 +971,7 @@ export class Controller implements vscode.Disposable {
               placeHolder: 'Pick a category or press Esc to skip',
             });
             this.recordCommit(hash, subject, undefined, note, category);
-            vscode.window.setStatusBarMessage(`$(note) TeamBoard: note saved for ${hash.slice(0, 7)}`, 4000);
+            vscode.window.setStatusBarMessage(`$(note) CommitBoard: note saved for ${hash.slice(0, 7)}`, 4000);
           }
           resolve(true);
           return;
@@ -707,7 +1041,7 @@ export class Controller implements vscode.Disposable {
       { label: '$(add) New task…', id: '__new__' },
       { label: '$(circle-slash) Clear current task', id: null },
     ];
-    const pick = await vscode.window.showQuickPick(items, { title: 'TeamBoard · What are you working on?', matchOnDescription: true });
+    const pick = await vscode.window.showQuickPick(items, { title: 'CommitBoard · What are you working on?', matchOnDescription: true });
     if (!pick) {
       return;
     }
@@ -726,7 +1060,7 @@ export class Controller implements vscode.Disposable {
   }
 
   async quickNewTask(pickUp = false): Promise<void> {
-    const title = await vscode.window.showInputBox({ title: 'TeamBoard · New task', prompt: 'Task title', ignoreFocusOut: true });
+    const title = await vscode.window.showInputBox({ title: 'CommitBoard · New task', prompt: 'Task title', ignoreFocusOut: true });
     if (!title) {
       return;
     }
@@ -746,12 +1080,12 @@ export class Controller implements vscode.Disposable {
         .sort((a, b) => Number(b.id === st.currentTaskId) - Number(a.id === st.currentTaskId) || Number(b.assignee === st.me.email) - Number(a.assignee === st.me.email))
         .map((t) => ({ label: `${t.id === st.currentTaskId ? '$(target)' : '$(circle-outline)'} ${t.id}  ${t.title}`, description: STATUS_LABEL[t.status], id: t.id })),
     ];
-    const target = await vscode.window.showQuickPick(items, { title: 'TeamBoard · Add update — which task is it for?', matchOnDescription: true });
+    const target = await vscode.window.showQuickPick(items, { title: 'CommitBoard · Add update — which task is it for?', matchOnDescription: true });
     if (!target) {
       return;
     }
     const message = await vscode.window.showInputBox({
-      title: 'TeamBoard · Add update',
+      title: 'CommitBoard · Add update',
       prompt: 'What did you do? (e.g. "Wrote launch blog post", "Client call") — no commit needed',
       ignoreFocusOut: true,
     });
@@ -770,7 +1104,7 @@ export class Controller implements vscode.Disposable {
         this.moveTask(task.id, 'review');
       }
     } else {
-      vscode.window.setStatusBarMessage('$(check) TeamBoard: update posted', 3000);
+      vscode.window.setStatusBarMessage('$(check) CommitBoard: update posted', 3000);
     }
   }
 
@@ -808,9 +1142,13 @@ export class Controller implements vscode.Disposable {
         case 'refresh': return void this.refreshStats();
         case 'openBoard': return openBoard(msg.tab, msg.taskId);
         case 'command': return void vscode.commands.executeCommand(msg.command);
+        default:
+          if (typeof msg.type === 'string' && (msg.type.startsWith('cloud') || msg.type === 'useLocal' || msg.type === 'copy')) {
+            return this.handleCloudMessage(msg);
+          }
       }
     } catch (e: any) {
-      vscode.window.showErrorMessage(`TeamBoard: ${e?.message || e}`);
+      vscode.window.showErrorMessage(`CommitBoard: ${e?.message || e}`);
     }
   }
 }

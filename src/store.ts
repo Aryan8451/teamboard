@@ -56,13 +56,13 @@ export interface BoardConfig {
   categories: string[];
 }
 
-export const DATA_DIR = '.teamboard';
+export const DATA_DIR = '.commitboard';
 
-const DEFAULT_CATEGORIES = ['Marketing', 'Design', 'Meeting', 'Research', 'Support', 'Docs', 'Planning', 'Other'];
+export const DEFAULT_CATEGORIES =['Marketing', 'Design', 'Meeting', 'Research', 'Support', 'Docs', 'Planning', 'Other'];
 
-const README = `# TeamBoard data
+const README = `# CommitBoard data
 
-This folder is managed by the **TeamBoard** VS Code extension.
+This folder is managed by the **CommitBoard** VS Code extension.
 Commit it to git so your whole team shares the same board — no server needed.
 
 - \`config.json\`   project name, sprints, work categories
@@ -84,7 +84,26 @@ function slug(email: string): string {
   return (email || 'unknown').toLowerCase().replace(/[^a-z0-9]+/g, '_');
 }
 
-export class Store {
+/** Where a board lives: local files in the repo, or the CommitBoard cloud. Methods are sync; cloud keeps a cache. */
+export interface BoardStore {
+  readonly kind: 'local' | 'cloud';
+  isInitialized(): boolean;
+  loadConfig(): BoardConfig;
+  saveConfig(c: BoardConfig): void;
+  loadTasks(): Task[];
+  saveTask(t: Task): void;
+  deleteTask(id: string): void;
+  loadMembers(): Member[];
+  saveMembers(m: Member[]): void;
+  loadActivity(): ActivityEntry[];
+  appendActivity(entry: ActivityEntry): void;
+  removeCommitLinks(email: string, hash: string): void;
+  removeActivity(email: string, id: string): void;
+}
+
+export class Store implements BoardStore {
+  readonly kind = 'local' as const;
+
   constructor(public readonly root: string) {}
 
   get dir(): string {
