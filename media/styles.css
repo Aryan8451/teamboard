@@ -462,8 +462,9 @@ details.more summary:hover { color: var(--fg); }
 .mini .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini .sd { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
 .mini.on { background: var(--accent-soft); }
-.sb-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
-.sb-actions .btn { justify-content: center; }
+.sb-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
+.sb-actions .btn { justify-content: center; min-width: 0; padding-left: 6px; padding-right: 6px; overflow: hidden; text-overflow: ellipsis; }
+.now-card .acts .btn { flex: 1 1 auto; justify-content: center; }
 .lb-mini { display: flex; align-items: center; gap: 8px; padding: 5px 4px; font-size: 12px; }
 .lb-mini .r { width: 18px; text-align: center; font-weight: 800; color: var(--muted); }
 .lb-mini .r.r1 { color: var(--gold); } .lb-mini .r.r2 { color: var(--silver); } .lb-mini .r.r3 { color: var(--bronze); }
